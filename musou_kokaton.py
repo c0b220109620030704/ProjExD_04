@@ -2,6 +2,7 @@ import math
 import random
 import sys
 import time
+from typing import KeysView
 
 import pygame as pg
 
@@ -44,7 +45,11 @@ class Bird(pg.sprite.Sprite):
         pg.K_DOWN: (0, +1),
         pg.K_LEFT: (-1, 0),
         pg.K_RIGHT: (+1, 0),
-    }
+    } 
+    
+    
+    
+
 
     def __init__(self, num: int, xy: tuple[int, int]):
         """
@@ -120,6 +125,8 @@ class Bird(pg.sprite.Sprite):
 
 
         screen.blit(self.image, self.rect)
+
+    
     
     def get_direction(self) -> tuple[int, int]:
         return self.dire
@@ -307,7 +314,7 @@ def main():
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load("ex04/fig/pg_bg.jpg")
     score = Score()
-
+    shift_pressed = False
     bird = Bird(3, (900, 400))
     bombs = pg.sprite.Group()
     beams = pg.sprite.Group()
@@ -336,14 +343,22 @@ def main():
                 beams.add(Beam(bird))
                 
         screen.blit(bg_img, [0, 0])
-
+        
+        if key_lst[pg.K_LSHIFT]:
+            shift_pressed = True
+        else:
+            shift_pressed = False
+        if shift_pressed:
+            bird.speed = 20  # シフトキーが押されている場合は高速化
+        else:
+            bird.speed = 10 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
-                bombs.add(Bomb(emy, bird))
+                bombs.add(Bomb(emy, bird))  
 
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
