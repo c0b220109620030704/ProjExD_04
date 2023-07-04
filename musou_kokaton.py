@@ -320,7 +320,10 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+
+    shield = pg.sprite.Group() 
     gravities = pg.sprite.Group()
+
 
     tmr = 0
     clock = pg.time.Clock()
