@@ -279,7 +279,7 @@ def main():
                 beams.add(Beam(bird))
         screen.blit(bg_img, [0, 0])
         
-        if key_lst[pg.K_LSHIFT] or key_lst[pg.K_RSHIFT]:
+        if key_lst[pg.K_LSHIFT]:
             shift_pressed = True
         else:
             shift_pressed = False
