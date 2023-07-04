@@ -164,14 +164,14 @@ class Beam(pg.sprite.Sprite):
     """
     ビームに関するクラス
     """
-    def __init__(self, bird: Bird):
+    def __init__(self, bird: Bird, digree: float=0):
         """
         ビーム画像Surfaceを生成する
         引数 bird：ビームを放つこうかとん
         """
         super().__init__()
         self.vx, self.vy = bird.get_direction()
-        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        angle = math.degrees(math.atan2(-self.vy, self.vx)) + digree
         self.image = pg.transform.rotozoom(pg.image.load(f"ex04/fig/beam.png"), angle, 2.0)
         self.vx = math.cos(math.radians(angle))
         self.vy = -math.sin(math.radians(angle))
@@ -189,7 +189,20 @@ class Beam(pg.sprite.Sprite):
         if check_bound(self.rect) != (True, True):
             self.kill()
 
-
+class NeoBeam():
+    """
+    複数のビーム
+    """
+    def __init__(self, bird: Bird, num: int): 
+        self.bird = bird
+        self.num = num
+        self.beams =list()
+        
+    def gen_beams(self):
+        for angle in range(-50, 51, int(100/(self.num-1))):
+            self.beams.append(Beam(self.bird, angle))
+        return self.beams
+    
 class Explosion(pg.sprite.Sprite):
     """
     爆発に関するクラス
@@ -267,6 +280,27 @@ class Score:
         self.image = self.font.render(f"Score: {self.score}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+    def get_score(self):
+        return int(self.score)
+
+class Gravity(pg.sprite.Sprite):
+    """
+    追加機能５の重力球に関するクラス
+    こうかとんを中心に重力球を発生させる
+    """
+    def __init__(self, bird, size, life):
+        super().__init__()
+        RGBA = (0, 0, 0, 120) # 重力球の色を透過度120の黒に設定
+        self.image = pg.Surface((2*size, 2*size), pg.SRCALPHA) # pg.SRCALPHAでSurfaceを透過に対応させる
+        self.rect = pg.draw.circle(self.image, RGBA, (size, size), size) # 新しく作ったself.imageというSurfaceの(size,size)の位置に円を生成
+        self.rect = self.image.get_rect(center = bird.rect.center)# 重力球の中心をbirdの中心に設定
+        self.image.set_colorkey((255,255,255)) # 黒を透過する
+        self.life = life
+
+    def update(self): # 重力球のlifeを１ずつ減算し、0未満になったらkill()
+        self.life -= 1
+        if self.life < 0:
+            self.kill()
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -279,6 +313,7 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    gravities = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -289,11 +324,17 @@ def main():
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
+
             if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:
                 if score.score >= 100:
                     bird.change_state("hyper",500)
                     score.score -= 100
 
+
+            if event.type == pg.KEYDOWN and event.key == pg.K_SPACE and key_lst[pg.K_LSHIFT]:
+                beams.add(NeoBeam(bird, 5).gen_beams())     
+                beams.add(Beam(bird))
+                
         screen.blit(bg_img, [0, 0])
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
@@ -313,6 +354,25 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.score_up(1)  # 1点アップ
 
+        for bomb in pg.sprite.groupcollide(bombs, gravities, True, False).keys(): # bombとgravitiesの衝突判定。bombのみ消える
+            exps.add(Explosion(bomb, 50))  # 爆発エフェクト
+            score.score_up(1) # 1点アップ
+    
+        gravities.update()
+        gravities.draw(screen)
+
+        if event.type == pg.KEYDOWN and event.key == pg.K_TAB \
+            and score.get_score() > 50\
+            and len(gravities) == 0: # TABキーを押している　かつ　スコアが50より大きい　かつ　gravitiesグループに他にgravityインスタンスがない
+            score.score_up(-50)
+            gravities.add(Gravity(bird, 200, 500)) # size（半径）を200、life（発動時間）を500に設定したGravityをgravitiesグループに追加
+
+        if len(pg.sprite.spritecollide(bird, bombs, True)) != 0:
+            bird.change_img(8, screen) # こうかとん悲しみエフェクト
+            score.update(screen)
+            pg.display.update()
+            time.sleep(2)
+            return
 
         for bomb in pg.sprite.spritecollide(bird,bombs,True):
             if bird.state =="hyper":
